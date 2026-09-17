@@ -21,7 +21,7 @@ const NO_CACHE_HEADERS = {
 
 /** 带 no-store 头的 JSON 响应，确保部署接口不被 CDN 缓存 */
 function json(data: unknown, init?: ResponseInit) {
-  return json(data, {
+  return NextResponse.json(data, {
     ...init,
     headers: { ...NO_CACHE_HEADERS, ...(init?.headers as Record<string, string>) },
   });
