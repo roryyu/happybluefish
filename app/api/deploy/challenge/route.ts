@@ -17,11 +17,20 @@ export async function GET() {
   }
 
   const challenge = generateChallenge();
-  return NextResponse.json({
-    ok: true,
-    challenge,
-    algorithm: "HMAC-SHA256",
-    expiresIn: 60,
-    hint: "使用 DEPLOY_SECRET 对 challenge 做 HMAC-SHA256，将十六进制结果作为 X-Deploy-Signature",
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      challenge,
+      algorithm: "HMAC-SHA256",
+      expiresIn: 60,
+      hint: "使用 DEPLOY_SECRET 对 challenge 做 HMAC-SHA256，将十六进制结果作为 X-Deploy-Signature",
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    },
+  );
 }
