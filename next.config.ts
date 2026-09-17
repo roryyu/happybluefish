@@ -2,21 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  async rewrites() {
-    return [
-      // /proxy 路由：将 /proxy/* 映射到 public 目录下的静态文件
-      {
-        // 带扩展名的文件（.css/.js/.png/.html 等）：去掉 /proxy 前缀，直接从 public 提供
-        source: '/proxy/:path(.*\\.[a-zA-Z0-9]+$)',
-        destination: '/:path',
-      },
-      {
-        // 不带扩展名的路径：去掉 /proxy 前缀并自动追加 .html
-        source: '/proxy/:path((?!.*\\.[a-zA-Z0-9]+$).*)',
-        destination: '/:path.html',
-      },
-    ];
-  },
+  // 注意：/proxy/* 的代理逻辑已迁移到 app/proxy/[...path]/route.ts 运行时处理，
+  // 直接从 public 目录读取文件，这样部署到 public 的新文件无需 npm run build 即可访问。
 };
 
 export default nextConfig;

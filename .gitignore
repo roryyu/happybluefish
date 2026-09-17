@@ -21,6 +21,7 @@
 /build
 /dist
 /data
+/public/agent/*
 # misc
 .DS_Store
 *.pem

@@ -129,16 +129,15 @@ export function safeResolve(targetPath: string): string {
   if (targetPath.includes("\0")) {
     throw new Error("path 包含非法字符");
   }
+  // 直接拒绝任何 .. 成分，不做静默改写（fail closed）
+  if (targetPath.includes("..")) {
+    throw new Error("path 不允许包含 ..");
+  }
 
   // 去除前导的 / 或 ./
   let normalized = targetPath.replace(/^[/\\.]+/, "");
   // 规范化分隔符
   normalized = path.normalize(normalized);
-
-  // 再次拦截任何穿越成分
-  if (normalized.startsWith("..") || normalized.includes("..")) {
-    throw new Error("path 不允许包含 ..");
-  }
 
   const resolved = path.resolve(DEPLOY_ROOT, normalized);
   const root = path.resolve(DEPLOY_ROOT);
