@@ -23,16 +23,16 @@ const projects = [
     role: "2026.06 - 至今",
     link: "https://www.soulmates.org.cn/",
     description:
-      "通过Minimax音乐模型应用生成音乐素材，同时构建自然语言音乐编辑能力，实现工业化精准音乐生产。企业版本研发完成已上线，目前正在试用中。",
-    tags: ["Minimax", "AI音乐生成", "自然语言编辑", "B端产品"],
+      "通过音乐模型应用生成音乐素材，同时构建自然语言音乐编辑能力，实现工业化精准音乐生产。",
+    tags: ["AI音乐生成", "自然语言编辑", "B端产品"],
   },
   {
     title: "EduDream - AI教育产品",
     role: "2026.04 - 至今",
     link: "https://www.edudream.cn",
     description:
-      "RAG知识库产品，基于DeepSeek V3和doubao-embedding-text模型，实现中小学教师课程论文Agent。3周完成初版开发，上线2周获300+位付费用户。目前toB版本已研发完成，进入市场推广阶段。",
-    tags: ["DeepSeek", "RAG", "AI Agent", "Prompt Engineering", "用户增长"],
+      "RAG知识库产品，基于DeepSeek V3和doubao-embedding-text模型，实现中小学教师课程论文Agent",
+    tags: ["DeepSeek", "RAG", "AI Agent", "Prompt Engineering", "科研论文"],
   },
 ];
 
@@ -44,6 +44,8 @@ const skills = [
   { name: "create-index", desc: "wiki llm索引自动生成", url: "https://skillhub.cn/skills/create-index", icon: FileText },
   { name: "text-art", desc: "文本艺术生成", url: "https://skillhub.cn/skills/text-art", icon: Palette },
   { name: "forget-something", desc: "记忆管理插件", url: "https://clawhub.ai/roryyu/forget-something", icon: Database },
+  {name:"grill-self", desc:"自己反问",url:"https://skillhub.cn/skills/user_6c29a21a/grill-self", icon: FileText},
+  { name: "root-for-wash", desc: "潜行者决策", url: "https://skillhub.cn/skills/user_6c29a21a/root-for-wash", icon: Palette },
 ];
 
 const community = [

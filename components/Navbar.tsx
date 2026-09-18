@@ -38,7 +38,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="#hero" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <span className="text-white font-bold text-sm">Y</span>
+            <span className="text-white font-bold text-sm">Rory</span>
           </div>
           <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
             郁辰磊

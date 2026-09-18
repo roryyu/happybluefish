@@ -5,10 +5,10 @@ import { motion } from "framer-motion";
 import { MapPin, Mail, Phone, GitFork, ExternalLink } from "lucide-react";
 
 const roles = [
-  "技术经理",
-  "AI应用架构师",
-  "AI Agent技术专家",
-  "技术总监",
+  "Founder",
+  "Builder",
+  "Creator",
+  "Trainer",
 ];
 
 function useTypewriter(words: string[], speed = 150, pause = 2000) {
@@ -71,10 +71,6 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-primary text-sm font-medium mb-6">
-                <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                开放求职机会
-              </div>
 
               <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
                 郁辰磊
@@ -94,7 +90,7 @@ export default function Hero() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-muted text-lg leading-relaxed max-w-2xl"
             >
-              15年前后端研发经验，8年技术团队管理经验，深耕企业数字化建设，覆盖电商、广告、教育、互联网、公安、5G等多个行业领域。擅长从用户场景、技术架构、业务流程与商业模式等多维度设计解决方案，并推动项目高效交付。
+              15年前后端研发经验，8年技术团队管理经验，深耕企业数字化建设，覆盖互联网、广告、教育、公安、金融、通信等多个行业领域。擅长从用户场景、技术架构、业务流程与商业模式等多维度设计解决方案，并推动项目高效交付。
             </motion.p>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -102,7 +98,7 @@ export default function Hero() {
               transition={{ duration: 0.6, delay: 0.25 }}
               className="text-muted text-lg leading-relaxed max-w-2xl"
             >
-              当前专注<span className="text-primary font-medium">AI Agent应用开发</span>与<span className="text-accent font-medium">AI Native工具链建设</span>，熟练掌握Langchain、ONNX模型Web应用、Transformers应用及AI Agent定制与二次开发。独立开发AI教育产品toC版本已上线，正在推动toB版本落地。活跃于AI开发者社区，参与线下技术分享、播客录制与直播。
+              当前专注<span className="text-primary font-medium">AI Agent应用开发</span>与<span className="text-accent font-medium">AI Native技术咨询</span>，熟练掌握Langchain、LangGraph，ONNX模型、Transformers应用于web agent项目、微信小程序和原生app的定制开发。活跃于AI开发者社区，参与线下技术分享、播客录制与直播。
             </motion.p>
 
             <motion.div
@@ -159,25 +155,6 @@ export default function Hero() {
                 </motion.div>
               ))}
             </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.9 }}
-              className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/10"
-            >
-              <div className="text-xs text-muted mb-2 uppercase tracking-wider">求职意向</div>
-              <div className="flex flex-wrap gap-2">
-                {["技术经理", "AI应用架构师", "技术总监", "AI Agent技术专家"].map((role) => (
-                  <span
-                    key={role}
-                    className="px-3 py-1 rounded-full bg-white border border-primary/15 text-sm text-primary font-medium"
-                  >
-                    {role}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
           </motion.div>
         </div>
       </div>

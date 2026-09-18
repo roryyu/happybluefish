@@ -25,7 +25,6 @@ const jobs: Job[] = [
     company: "锐捷网络",
     role: "应用研发部门经理",
     period: "2023.03 - 2026.03",
-    reporting: "技术总监",
     teamSize: "35-50人",
     clients: "福建公安省厅、红云红河烟草集团、大连理工、工商银行、北农商银行、太平洋保险、人保、大家保险、中通快递、新东方等",
     color: "#2563eb",
@@ -84,7 +83,6 @@ const jobs: Job[] = [
     company: "阿里巴巴",
     role: "CRO线高级技术专家",
     period: "2018.12 - 2023.02",
-    reporting: "研发主管",
     teamSize: "7-9人",
     clients: "河北省廊坊市公安局安次分局禁毒办公室、河北省沧州市公安局禁毒支队等1300+客户",
     color: "#f59e0b",
@@ -124,7 +122,6 @@ const jobs: Job[] = [
     company: "中欧国际工商学院",
     role: "IT经理",
     period: "2015.09 - 2018.12",
-    reporting: "IT主任",
     color: "#10b981",
     details: [
       {
@@ -243,7 +240,7 @@ const jobs: Job[] = [
 ];
 
 function JobCard({ job, index }: { job: Job; index: number }) {
-  const [expanded, setExpanded] = useState(index === 0);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div
