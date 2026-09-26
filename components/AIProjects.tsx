@@ -27,12 +27,12 @@ const projects = [
     tags: ["AI音乐生成", "自然语言编辑", "B端产品"],
   },
   {
-    title: "EduDream - AI教育产品",
-    role: "2026.04 - 至今",
-    link: "https://www.edudream.cn",
+    title: "Sanshiqi - 本地生活顾客管理",
+    role: "2026.07 - 至今",
+    link: "https://www.sanshiqi.vip",
     description:
-      "RAG知识库产品，基于DeepSeek V3和doubao-embedding-text模型，实现中小学教师课程论文Agent",
-    tags: ["DeepSeek", "RAG", "AI Agent", "Prompt Engineering", "科研论文"],
+      "基于AI编程快速构建本地生活企业顾客管理系统",
+    tags: ["本地生活", "顾客管理", "AI编程", "微信小程序支持"],
   },
 ];
 
