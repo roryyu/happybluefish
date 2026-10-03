@@ -315,7 +315,7 @@ export default function GuaPage() {
 
   const fxRef = useRef<HTMLCanvasElement | null>(null);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
-  const chatInputRef = useRef<HTMLInputElement | null>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement | null>(null);
   const actxRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
