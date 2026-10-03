@@ -5,8 +5,9 @@
 # 流程：
 #   1. 侦测 GitHub 远端是否有更新，有则 git pull；无更新直接结束
 #   2. 若本次更新改动了 package.json，则删除 node_modules / package-lock.json 并 npm i
-#   3. npm run build
-#   4. pm2 restart 0
+#   3. 若本次更新改动了 prisma schema / 迁移，则应用数据库迁移并重新生成 Client
+#   4. npm run build
+#   5. pm2 restart 0
 #
 # 任意一步出现异常（命令失败、前置条件不满足）立即退出，不再执行后续步骤。
 
@@ -25,7 +26,7 @@ die() {
 }
 
 # ---------- 步骤 1：侦测远端更新并拉取 ----------
-log "步骤 1/4：侦测远端更新"
+log "步骤 1/5：侦测远端更新"
 
 command -v git >/dev/null 2>&1 || die "未找到 git 命令"
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "当前目录不是 git 仓库"
@@ -72,7 +73,7 @@ NEW_REV="$(git rev-parse HEAD)"
 log "步骤 1 完成，当前版本：${NEW_REV:0:8}"
 
 # ---------- 步骤 2：依赖是否变化 ----------
-log "步骤 2/4：检查 package.json 是否变化"
+log "步骤 2/5：检查 package.json 是否变化"
 
 CHANGED_FILES="$(git diff --name-only "$LOCAL_REV" "$NEW_REV")"
 if [ -z "$CHANGED_FILES" ]; then
@@ -90,13 +91,30 @@ else
   log "package.json 未变化，跳过依赖安装，继续后续步骤"
 fi
 
-# ---------- 步骤 3：构建 ----------
-log "步骤 3/4：npm run build"
-npm run build || die "npm run build 构建失败，已中止部署（未重启 pm2）"
-log "步骤 3 完成：构建成功"
+# ---------- 步骤 3：数据库 schema 是否变化 ----------
+log "步骤 3/5：检查 prisma schema / 迁移是否变化"
 
-# ---------- 步骤 4：重启 pm2 ----------
-log "步骤 4/4：pm2 restart 0"
+# 匹配 prisma/schema.prisma 或 prisma/migrations/ 下任意文件的变更
+if echo "$CHANGED_FILES" | grep -qE '^prisma/(schema\.prisma|migrations/)'; then
+  log "prisma schema / 迁移已变化，应用数据库迁移"
+  command -v npx >/dev/null 2>&1 || die "未找到 npx 命令"
+  # migrate deploy 只应用已提交的迁移，不需要 shadow database，生产/开发通用
+  npx prisma migrate deploy || die "prisma migrate deploy 失败，已中止部署"
+  # schema 变化时 package.json 可能未变（步骤 2 跳过了 npm i，postinstall 未触发），
+  # 这里显式重新生成 Client，保证步骤 4 构建时类型最新
+  npx prisma generate || die "prisma generate 失败，已中止部署"
+  log "步骤 3 完成：数据库迁移已应用，Prisma Client 已重新生成"
+else
+  log "prisma schema 未变化，跳过数据库迁移"
+fi
+
+# ---------- 步骤 4：构建 ----------
+log "步骤 4/5：npm run build"
+npm run build || die "npm run build 构建失败，已中止部署（未重启 pm2）"
+log "步骤 4 完成：构建成功"
+
+# ---------- 步骤 5：重启 pm2 ----------
+log "步骤 5/5：pm2 restart 0"
 command -v pm2 >/dev/null 2>&1 || die "未找到 pm2 命令"
 pm2 restart 0 || die "pm2 restart 0 失败"
-log "步骤 4 完成：pm2 已重启，部署成功（版本 ${NEW_REV:0:8}）"
+log "步骤 5 完成：pm2 已重启，部署成功（版本 ${NEW_REV:0:8}）"
