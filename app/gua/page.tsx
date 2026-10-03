@@ -663,6 +663,8 @@ export default function GuaPage() {
     }
     const outbound: ChatMsg[] = [...messages, { role: "user", content: text }];
     setDraft("");
+    // textarea 是自增高高的，清空后必须把高度收回单行，否则输入框会一直撑高
+    if (chatInputRef.current) chatInputRef.current.style.height = "auto";
     setMessages(outbound);
     setLoading(true);
 
@@ -1147,14 +1149,20 @@ export default function GuaPage() {
                     解此卦
                   </button>
                   <div className="chat-input-row">
-                    <input
+                    {/* textarea 而非 input：契约要求 Shift+Enter 换行，<input> 做不到。
+                        高度随内容自增，超过 CSS max-height 后内部滚动。 */}
+                    <textarea
                       className="chat-input"
-                      type="text"
+                      rows={1}
                       placeholder="继续追问，如：此事应如何把握时机？"
-                      autoComplete="off"
                       value={draft}
                       ref={chatInputRef}
-                      onChange={(e) => setDraft(e.target.value)}
+                      onChange={(e) => {
+                        setDraft(e.target.value);
+                        const el = e.currentTarget;
+                        el.style.height = "auto";
+                        el.style.height = `${el.scrollHeight}px`;
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();

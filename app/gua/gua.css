@@ -1060,13 +1060,19 @@
 }
 .gua-root .chat-input {
   flex: 1;
+  /* 契约要求 Shift+Enter 可换行，故用 textarea 自增高；max-height 到顶后内部滚动 */
+  min-height: 43px;
+  max-height: 160px;
   padding: 11px 14px;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: rgba(10, 7, 22, 0.85);
   color: var(--ink);
   font-size: 15px;
+  line-height: 1.5;
   outline: none;
+  resize: none;
+  overflow-y: auto;
   transition: 0.2s;
 }
 .gua-root .chat-input:focus {

@@ -36,10 +36,18 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
 [ -n "$UPSTREAM" ] || die "分支 $BRANCH 没有配置上游分支，无法侦测远端更新"
 
-# 工作区必须干净，否则 pull 可能产生冲突或覆盖本地改动
-if [ -n "$(git status --porcelain)" ]; then
-  die "工作区存在未提交改动，请先处理后再部署：$(git status --porcelain | head -n 5 | tr '\n' ';')"
+# 工作区必须干净，否则 pull 可能产生冲突或覆盖本地改动。
+# 排除项说明：
+#   --untracked-files=no  未追踪文件（如 deploy.sh 本身、logs/）不影响 pull，不算脏
+#   :!package-lock.json   步骤 2 会删除并重新生成 lock，属生成物，不算脏，
+#                         否则第二次定时部署会被自己的产物卡死
+DIRTY="$(git status --porcelain --untracked-files=no -- ':!package-lock.json')"
+if [ -n "$DIRTY" ]; then
+  die "工作区存在未提交的已追踪改动，请先处理后再部署：$(echo "$DIRTY" | head -n 5 | tr '\n' ';')"
 fi
+
+# lock 是生成物，pull 前丢弃其本地改动，避免与远端版本冲突导致 --ff-only 失败
+git checkout -- package-lock.json 2>/dev/null || true
 
 log "当前分支：$BRANCH，上游：$UPSTREAM，开始 fetch..."
 git fetch --quiet origin "$BRANCH" || die "git fetch 失败，请检查网络或远端仓库权限"
