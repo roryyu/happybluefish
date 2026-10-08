@@ -117,6 +117,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  // 自检探针：?probe=llm | bing | all，从服务器实测出网连通性（部署平台出站被拦时一步定位）
+  const probe = req.nextUrl.searchParams.get("probe");
+  if (probe) return probeNetwork(probe);
+
   const id = req.nextUrl.searchParams.get("task");
   const job = id ? jobs.get(id) : undefined;
   if (!job) {
@@ -124,6 +128,72 @@ export async function GET(req: NextRequest) {
   }
   const { cancelled, ...snapshot } = job;
   return Response.json(snapshot);
+}
+
+/** 出网连通性探针：短超时实测，绝不长挂。 */
+async function probeNetwork(target: string): Promise<Response> {
+  const out: Record<string, unknown> = {};
+  const withTimeout = async (label: string, timeoutMs: number, fn: (signal: AbortSignal) => Promise<Response>) => {
+    const t0 = Date.now();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const r = await fn(ctrl.signal);
+      out[label] = { ok: r.status < 400, status: r.status, ms: Date.now() - t0 };
+    } catch (e) {
+      out[label] = { ok: false, ms: Date.now() - t0, error: (e as Error).name === "AbortError" ? `${timeoutMs / 1000}s 超时（连接被黑洞/挂起）` : (e as Error).message };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const baseURL = (process.env.BASE_URL || "").replace(/\/+$/, "");
+  const model = process.env.MODEL_ID || "qwen3.8-max";
+  let host = "";
+  try {
+    host = baseURL ? new URL(baseURL).host : "";
+  } catch {}
+
+  if (target === "llm" || target === "all") {
+    await withTimeout("llm", 10_000, (signal) =>
+      fetch(`${baseURL}/models`, {
+        headers: { Authorization: `Bearer ${process.env.API_KEY ?? ""}` },
+        signal,
+      }),
+    );
+    out.llm = { host, model, ...(out.llm as object) };
+  }
+  if (target === "chat" || target === "all") {
+    // 在应用进程内用真实配置直连发一次最小对话（绕过 SDK），验证 key/model/端点全链路
+    await withTimeout("chat", 25_000, async (signal) => {
+      const r = await fetch(`${baseURL}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.API_KEY ?? ""}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: "只回复两个字：正常" }],
+          max_tokens: 16,
+          stream: false,
+          enable_thinking: false,
+        }),
+        signal,
+      });
+      const body = await r.text().catch(() => "");
+      out.chatBody = body.slice(0, 400);
+      return r;
+    });
+    out.chat = { host, model, ...(out.chat as object) };
+  }
+  if (target === "bing" || target === "all") {
+    await withTimeout("bing", 10_000, (signal) =>
+      fetch("https://www.bing.com/search?q=connectivity-test", {
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" },
+        signal,
+      }),
+    );
+    out.hint = "chat.ok=false 看返回的 chatBody 错误信息；chat 超时则是应用进程出网被拦（与宿主机无关，查容器/平台白名单）";
+  }
+  return Response.json(out);
 }
 
 export async function DELETE(req: NextRequest) {
@@ -139,7 +209,9 @@ async function runTravelJob(job: Job, idea: string, prefs: string) {
   const apiKey = process.env.API_KEY!;
   const baseURL = (process.env.BASE_URL || "").replace(/\/+$/, "");
   const model = process.env.MODEL_ID || "qwen3.8-max";
-  const openai = new OpenAI({ apiKey, baseURL });
+  // 显式收紧单次调用超时与重试：SDK 默认 10 分钟超时 × 2 次重试，服务器出网被拦时
+  // 会表现为任务永远卡在 running；收紧后最迟 ~4 分钟失败并给出可读错误。
+  const openai = new OpenAI({ apiKey, baseURL, timeout: 120_000, maxRetries: 1 });
 
   const userContent = prefs ? `旅游想法：${idea}\n补充偏好：${prefs}` : `旅游想法：${idea}`;
 
@@ -337,7 +409,11 @@ async function runTravelJob(job: Job, idea: string, prefs: string) {
 
     finish("done");
   } catch (e) {
-    finish("error", (e as Error).message || "pipeline error");
+    const msg = (e as Error).message || "pipeline error";
+    finish(
+      "error",
+      `阶段 ${job.stage} 失败：${msg}。模型端点 ${baseURL} —— 若为超时/连接错误，说明服务器出网被拦，访问 /api/travel?probe=all 自检。`,
+    );
   }
 }
 
