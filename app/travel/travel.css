@@ -1,0 +1,286 @@
+/* 旅行路书页专用样式，主题令牌复用 bazi.css 的 :root 变量 */
+
+.travel-idea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1.7;
+  font-family: inherit;
+  color: var(--text);
+  background: #fff;
+}
+
+.travel-idea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* 可选偏好分组 */
+.pref-group {
+  margin-top: 16px;
+}
+
+.pref-group .pref-label {
+  font-size: 12px;
+  color: var(--sub);
+  margin-bottom: 6px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--sub);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
+.chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.travel-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  display: inline-block;
+  padding: 9px 18px;
+  background: transparent;
+  color: var(--sub);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
+/* 路书正文容器 */
+.roadbook {
+  background: #fdfaf2;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px 22px;
+  font-size: 14.5px;
+  line-height: 1.9;
+  word-break: break-word;
+}
+
+.roadbook-empty {
+  text-align: center;
+  color: var(--sub);
+  font-size: 13px;
+  padding: 28px 0;
+}
+
+/* ===== 流水线阶段进度 ===== */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pipe-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--sub);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.pipe-step .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.pipe-step.active {
+  border-color: var(--accent);
+  color: var(--primary);
+  font-weight: 600;
+}
+.pipe-step.active .dot {
+  background: var(--accent);
+  animation: pulse 1s infinite;
+}
+
+.pipe-step.done {
+  border-color: var(--el-mu);
+  color: var(--el-mu);
+}
+.pipe-step.done .dot {
+  background: var(--el-mu);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* 需求解析标签 */
+.req-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.req-tags .req-item {
+  font-size: 12.5px;
+  background: #f1e7d2;
+  color: var(--primary);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+.req-tags .req-item b {
+  color: var(--sub);
+  font-weight: 400;
+  margin-right: 4px;
+}
+
+/* 实查资料条目 */
+.research-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.research-item .ri-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f8f0dc;
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+.research-item .ri-query {
+  font-weight: 400;
+  color: var(--sub);
+  font-size: 11.5px;
+}
+.research-item .ri-body {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* 事实源（数据对比结果） */
+.facts-box {
+  background: #f3ecdc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 13px;
+  line-height: 1.8;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* Agent 实查轨迹 */
+.trace {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.trace-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fffdf7;
+}
+.ts-tool {
+  flex: 0 0 auto;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+.ts-tool.search { background: #e8f0fe; color: #1a56b0; }
+.ts-tool.fetch { background: #f1e7d2; color: var(--primary); }
+.ts-tool.builtin { background: #e6f4ea; color: #1e7d43; }
+.ts-arg {
+  flex: 1 1 auto;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ts-status { flex: 0 0 auto; width: 56px; text-align: right; }
+.ts-pending { color: var(--sub); font-size: 11px; }
+.ts-ok { color: var(--el-mu); font-weight: 700; }
+.ts-fail { color: var(--el-huo); font-weight: 700; }
+
+/* 底部 loading 条 */
+.loading-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 18px 0 6px;
+  color: var(--sub);
+  font-size: 13px;
+}
+
+.loading-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
