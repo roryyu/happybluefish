@@ -64,7 +64,8 @@ export default function TravelPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDossier, setShowDossier] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
+  const taskIdRef = useRef<string | null>(null);
+  const stopRef = useRef(false);
 
 
   const togglePref = (key: string, value: string) => {
@@ -94,91 +95,54 @@ export default function TravelPage() {
     const trimmed = idea.trim();
     if (!trimmed || loading) return;
 
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+    stopRef.current = false;
 
     setLoading(true);
     reset();
     try {
+      // 任务模式：POST 立即返回 taskId（部署网关 60s 会掐长连接，流水线在后台跑，前端轮询快照）
       const res = await fetch("/api/travel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea: trimmed, prefs: buildPrefsText() }),
-        signal: controller.signal,
       });
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         const msg = await res.text().catch(() => "");
         throw new Error(msg || `HTTP ${res.status}`);
       }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let serverError: string | null = null;
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = buf.indexOf("\n")) >= 0) {
-          const line = buf.slice(0, idx).trim();
-          buf = buf.slice(idx + 1);
-          if (!line) continue;
-          let evt: any;
-          try {
-            evt = JSON.parse(line);
-          } catch {
-            continue;
-          }
-          switch (evt.type) {
-            case "stage":
-              setStage(evt.stage);
-              break;
-            case "requirement":
-              setRequirement(evt.data);
-              break;
-            case "tool_call":
-              setTrace((prev) => [
-                ...prev,
-                { id: `${evt.round}-${evt.tool}-${prev.length}`, round: evt.round, tool: evt.tool, arg: evt.arg },
-              ]);
-              break;
-            case "tool_result":
-              setTrace((prev) => {
-                // 回填最近一条同工具同参数、尚未收到结果的轨迹
-                for (let i = prev.length - 1; i >= 0; i--) {
-                  if (prev[i].tool === evt.tool && prev[i].arg === evt.arg && prev[i].ok === undefined) {
-                    const next = [...prev];
-                    next[i] = { ...next[i], ok: evt.ok, preview: evt.preview };
-                    return next;
-                  }
-                }
-                return prev;
-              });
-              break;
-            case "research_done":
-              setDossier(evt.dossier || "");
-              break;
-            case "facts":
-              setFacts(evt.markdown);
-              break;
-            case "content":
-              if (evt.text) setText((prev) => prev + evt.text);
-              break;
-            case "error":
-              serverError = evt.text || "stream error";
-              break;
-          }
+      const { taskId } = (await res.json()) as { taskId: string };
+      taskIdRef.current = taskId;
+
+      // 轮询任务快照，整包覆盖状态，直到完成 / 出错 / 用户停止
+      while (!stopRef.current) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (stopRef.current) break;
+        const r = await fetch(`/api/travel?task=${taskId}`);
+        if (!r.ok) {
+          throw new Error(r.status === 404 ? "任务不存在（服务可能已重启），请重新生成" : `HTTP ${r.status}`);
         }
+        const snap = await r.json();
+        setStage(snap.stage || "");
+        setRequirement(snap.requirement ?? null);
+        setTrace(snap.trace ?? []);
+        setDossier(snap.dossier || "");
+        setFacts(snap.facts || "");
+        setText(snap.content || "");
+        if (snap.status === "done" || snap.status === "cancelled") break;
+        if (snap.status === "error") throw new Error(snap.error || "生成失败");
       }
-      if (serverError) throw new Error(serverError);
     } catch (e) {
-      if ((e as Error).name === "AbortError") return;
-      setError((e as Error).message || "生成失败");
+      if (!stopRef.current) setError((e as Error).message || "生成失败");
     } finally {
       setLoading(false);
       setStage("");
     }
+  };
+
+  const onStop = () => {
+    stopRef.current = true;
+    const id = taskIdRef.current;
+    if (id) void fetch(`/api/travel?task=${id}`, { method: "DELETE" });
   };
 
   const stageIndex = STAGES.findIndex((s) => s.key === stage);
@@ -240,7 +204,7 @@ export default function TravelPage() {
             {loading ? "路书生成中…" : text ? "重新生成" : "生成完整路书"}
           </button>
           {loading && (
-            <button type="button" className="btn-ghost" onClick={() => abortRef.current?.abort()}>
+            <button type="button" className="btn-ghost" onClick={onStop}>
               停止
             </button>
           )}
