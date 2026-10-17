@@ -30,9 +30,9 @@ const apps = [
   {
     href: "/bazi",
     icon: Calendar,
-    title: "八字命理",
-    subtitle: "BaZi Analysis",
-    description: "输入生辰，推排四柱八字、十神格局与灵魂能量，AI 深度解读命盘",
+    title: "八字 · 紫微斗数",
+    subtitle: "BaZi & Zi Wei",
+    description: "输入生辰，推排四柱八字、十神格局，并起紫微斗数命盘（十二宫、生年四化、大限与格局）",
     gradient: "from-violet-500/20 via-purple-500/10 to-indigo-500/20",
     accentColor: "text-violet-400",
     glowColor: "group-hover:shadow-violet-500/20",

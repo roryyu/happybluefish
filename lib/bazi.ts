@@ -753,6 +753,8 @@ export function buildAnalysisPrompt(
     gender?: "male" | "female";
   },
   result: BaziResult,
+  /** 紫微斗数命盘提示词片段（由 lib/ziwei-prompt.ts 生成），传入后会在提示词中加入紫微内容与对应章节要求 */
+  ziweiSection?: string,
 ): string {
   const patterns = analyzePatterns(result);
   const energy = summarizeTenGodEnergy(result);
@@ -821,6 +823,11 @@ export function buildAnalysisPrompt(
   }
   lines.push("");
 
+  if (ziweiSection?.trim()) {
+    lines.push(ziweiSection.trim());
+    lines.push("");
+  }
+
   lines.push("请基于以上排盘信息输出一份系统的命理分析，要求：");
   lines.push("1．《命局总评》：判断日主强弱、五行起伏、核心格局。");
   lines.push("2．《性格与天赋》：从日主及透干十神看个性、思维、才华。");
@@ -829,6 +836,12 @@ export function buildAnalysisPrompt(
   lines.push("5．《健康提示》：从五行偏枯看需注意的部位。");
   lines.push("6．《当下建议》：结合格局给出可操作的人生建议。");
   lines.push("7．《三魂七魄解读》：结合上述三魂七魄状态，从生命力、智慧、情感三魂和七大身体系统的角度给出养护建议。");
+  if (ziweiSection?.trim()) {
+    lines.push("8．《紫微命盘总览》：说明命宫/身宫、五行局、生年四化落宫与整体盘势，不要重复四柱结论。");
+    lines.push("9．《十二宫精读》：重点解读命宫、财帛宫、官禄宫、夫妻宫、疾厄宫、迁移宫，结合主星亮度、六吉六煞、四化与空宫借星。");
+    lines.push("10．《八字与紫微互参》：对照两套体系相互印证之处与差异，给出综合判断，不要简单并列。");
+    lines.push("11．《大限与阶段建议》：结合当前大限所在宫位与星曜，给出阶段性的事业、财务、关系与健康建议；若提示词未提供当前大限，则按命盘整体给出阶段判断。");
+  }
   lines.push("");
   lines.push("要求输出使用中文 Markdown 格式，段落清晰；");
 

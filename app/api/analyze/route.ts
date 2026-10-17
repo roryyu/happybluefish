@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const SYSTEM_PROMPT =
-  "你是个全球顶尖的命理大师，也是一个中国传统八字命理的专业研究人员，你熟读精通融会贯通穷通宝典，三命通会，滴天髓，渊海子平，千里命稿，协纪辨方书，果老星宗，子平真栓，神峰通考等一系列书籍。" +
-  "你将根据用户给出的排盘结果（已经计算好四柱八字、地支藏干、十神关系、能量分布与组合格局），" +
-  "做系统、客观、可读的分析。回答使用中文 Markdown，分小标题；不要重新计算八字，直接基于给定结果作答；" +
-  "同时对姓名也做文字上的分析和命理之间的关系，也分析八字对三魂七魄的影响，"+
+  "你是个全球顶尖的命理大师，同时精通四柱八字与紫微斗数。你熟读融会贯通穷通宝典，三命通会，滴天髓，渊海子平，千里命稿，协纪辨方书，果老星宗，子平真诠，神峰通考，以及紫微斗数全书、紫微斗数全集、斗数宣微、斗数骨髓赋等经典。" +
+  "你将根据用户给出的排盘结果（已经计算好四柱八字、地支藏干、十神关系、能量分布、组合格局，以及紫微斗数十二宫、星曜亮度、生年四化、格局与大限），" +
+  "做系统、客观、可读的分析。回答使用中文 Markdown，分小标题；不要重新排盘或重算任何数据，直接基于给定结果作答；" +
+  "同时对姓名也做文字上的分析和命理之间的关系，也分析八字对三魂七魄的影响，并把八字与紫微盘相互参照，"+
   "极致深入，越全面越好。";
 
 function nd(line: object) {
@@ -29,16 +29,22 @@ export async function POST(req: NextRequest) {
     return new Response("missing promptText", { status: 400 });
   }
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  const baseURL = (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, "");
-  const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+  // 复用 .env 里既有的大模型配置（API_KEY / BASE_URL / MODEL_ID），与 /api/travel 共用；
+  // 仍兼容 DEEPSEEK_* 前缀，便于单独指向 DeepSeek 官方端点
+  const apiKey = process.env.DEEPSEEK_API_KEY || process.env.API_KEY;
+  const baseURL = (
+    process.env.DEEPSEEK_BASE_URL ||
+    process.env.BASE_URL ||
+    "https://api.deepseek.com"
+  ).replace(/\/+$/, "");
+  const model = process.env.DEEPSEEK_MODEL || process.env.MODEL_ID || "deepseek-chat";
   // 仅 deepseek-v4-pro / deepseek-reasoner 之类支持思考链；通过环境变量显式开启
   const enableThinking =
     process.env.DEEPSEEK_THINKING === "1" || /v4-pro|reasoner/i.test(model);
 
   if (!apiKey) {
     return new Response(
-      "未配置 DEEPSEEK_API_KEY，请在 .env.local 中设置后重启服务。",
+      "未配置 API_KEY（或 DEEPSEEK_API_KEY），请在 .env 中设置后重启服务。",
       { status: 500 },
     );
   }

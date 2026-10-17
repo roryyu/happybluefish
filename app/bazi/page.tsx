@@ -14,6 +14,9 @@ import {
   summarizeTenGodEnergy,
   type BaziResult,
 } from "@/lib/bazi";
+import ZiweiView from "./ZiweiView";
+import { calcZiwei } from "@/lib/ziwei";
+import { buildZiweiPromptSection } from "@/lib/ziwei-prompt";
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   // 把小时与时辰一起标出，方便用户辨识
@@ -64,8 +67,8 @@ export default function Home() {
   return (
     <div className="container">
       <div className="header">
-        <h1>四柱八字排盘</h1>
-        <p>输入阳历出生时间，自动推算四柱、藏干与十神</p>
+        <h1>八字 · 紫微斗数排盘</h1>
+        <p>输入阳历出生时间，同时推算四柱八字与紫微斗数命盘</p>
       </div>
 
       <form className="card" onSubmit={onSubmit}>
@@ -139,7 +142,8 @@ export default function Home() {
         <p className="tip" style={{ marginTop: 12 }}>
           说明：年柱以 <code>立春</code> 为界、月柱以 <code>节气</code> 为界（21
           世纪寿星算法），日柱按干支纪日推算，时柱按
-          <code>五鼠遁</code> 起时。23:00 后归入次日子时。
+          <code>五鼠遁</code> 起时。23:00 后归入次日子时。紫微斗数命盘按
+          <code>农历</code> 排盘（正月初一换年），与本盘共用同一出生信息。
         </p>
       </form>
 
@@ -255,6 +259,7 @@ function ResultView({
       <PatternView result={result} />
       <EnergyView result={result} />
       <SoulSpiritView result={result} />
+      <ZiweiView input={input} />
       <AiAnalysisView result={result} input={input} runId={runId} />
     </>
   );
@@ -412,7 +417,32 @@ function AiAnalysisView({
   const [showPrompt, setShowPrompt] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
 
-  const promptText = useMemo(() => buildAnalysisPrompt(input, result), [input, result]);
+  // 紫微命盘的虚岁/当前大限依赖「今天」，挂载后再算，避免静态预渲染与客户端日期不一致
+  const [today, setToday] = useState<Date | null>(null);
+  useEffect(() => {
+    setToday(new Date());
+  }, []);
+
+  const ziweiSection = useMemo(() => {
+    try {
+      const chart = calcZiwei(
+        input.y,
+        input.m,
+        input.d,
+        input.h,
+        input.gender ?? "male",
+        today ?? undefined,
+      );
+      return buildZiweiPromptSection(chart);
+    } catch {
+      return "";
+    }
+  }, [input, today]);
+
+  const promptText = useMemo(
+    () => buildAnalysisPrompt(input, result, ziweiSection || undefined),
+    [input, result, ziweiSection],
+  );
 
   const onAnalyze = async () => {
     setLoading(true);
