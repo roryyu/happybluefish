@@ -444,54 +444,82 @@ function AiAnalysisView({
     [input, result, ziweiSection],
   );
 
+  // 轮询控制器：重新分析 / 重新排盘 / 卸载时用它终止上一轮轮询，避免竞态与内存泄漏
+  const pollAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => pollAbortRef.current?.abort(), []);
+
+  // 思考阶段实时面板：推理文本增长时自动滚到底，保证最新思考始终可见
+  const thinkingRef = useRef<HTMLPreElement | null>(null);
+  useEffect(() => {
+    const el = thinkingRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [reasoning]);
+
   const onAnalyze = async () => {
+    // 取消上一轮（若存在），本轮独占一个 AbortController
+    pollAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    pollAbortRef.current = ctrl;
+
     setLoading(true);
     setError(null);
     setText("");
     setReasoning("");
     try {
+      // 1) 建任务：POST 秒级返回 taskId，大模型流式推理在服务器后台跑
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ promptText }),
+        signal: ctrl.signal,
       });
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         const msg = await res.text().catch(() => "");
         throw new Error(msg || `HTTP ${res.status}`);
       }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let serverError: string | null = null;
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = buf.indexOf("\n")) >= 0) {
-          const line = buf.slice(0, idx).trim();
-          buf = buf.slice(idx + 1);
-          if (!line) continue;
-          let evt: { type: string; text?: string };
-          try {
-            evt = JSON.parse(line);
-          } catch {
-            continue;
-          }
-          if (evt.type === "content" && evt.text) {
-            setText((prev) => prev + evt.text);
-          } else if (evt.type === "reasoning" && evt.text) {
-            setReasoning((prev) => prev + evt.text);
-          } else if (evt.type === "error") {
-            serverError = evt.text || "stream error";
-          }
+      const { taskId } = (await res.json()) as { taskId?: string };
+      if (!taskId) throw new Error("服务端未返回 taskId");
+
+      // 2) 轮询任务快照，增量把 reasoning / content 渲染到页面
+      //    500ms 一次：思考阶段推理文本能较快滚动出现，出结果后也几乎无感延迟
+      const POLL_MS = 500;
+      while (!ctrl.signal.aborted) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
+        if (ctrl.signal.aborted) break;
+        let snapRes: Response;
+        try {
+          snapRes = await fetch(`/api/analyze?task=${encodeURIComponent(taskId)}`, {
+            signal: ctrl.signal,
+          });
+        } catch (e) {
+          if ((e as Error).name === "AbortError") break;
+          throw e;
         }
+        if (snapRes.status === 404) {
+          throw new Error("任务已过期或不存在，请重新分析");
+        }
+        if (!snapRes.ok) {
+          const msg = await snapRes.text().catch(() => "");
+          throw new Error(msg || `HTTP ${snapRes.status}`);
+        }
+        const snap = (await snapRes.json()) as {
+          status: string;
+          reasoning?: string;
+          content?: string;
+          error?: string | null;
+        };
+        // 快照是全量累积文本，直接覆盖（比逐段追加更稳，不会因丢包/乱序错位）
+        setReasoning(snap.reasoning ?? "");
+        setText(snap.content ?? "");
+        if (snap.status === "done" || snap.status === "cancelled") break;
+        if (snap.status === "error") throw new Error(snap.error || "分析失败");
       }
-      if (serverError) throw new Error(serverError);
     } catch (e) {
+      if ((e as Error).name === "AbortError") return; // 主动取消不算错误
       setError((e as Error).message || "调用失败");
     } finally {
-      setLoading(false);
+      // 仅当自己仍是当前轮时才收尾；被新一轮取代时不改 loading，避免误关新任务的加载态
+      if (pollAbortRef.current === ctrl) setLoading(false);
     }
   };
 
@@ -545,7 +573,43 @@ function AiAnalysisView({
           {error}
         </div>
       )}
-      {text ? (
+      {/* 思考阶段：正文还没到时实时展示大模型推理过程，避免长时间“卡住”的错觉 */}
+      {loading &&
+        !text &&
+        (reasoning ? (
+          <div
+            style={{
+              background: "#f3ecdc",
+              border: "1px solid var(--line)",
+              borderRadius: 6,
+              padding: "12px 14px",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--sub)", marginBottom: 8 }}>
+              AI 正在推演命理…（实时思考过程，出结果后自动收起）
+            </div>
+            <pre
+              ref={thinkingRef}
+              style={{
+                margin: 0,
+                maxHeight: 280,
+                overflow: "auto",
+                fontSize: 12,
+                lineHeight: 1.7,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                color: "var(--sub)",
+              }}
+            >
+              {reasoning}
+              <span style={{ color: "var(--accent)" }}>█</span>
+            </pre>
+          </div>
+        ) : (
+          <p className="tip">正在推演…</p>
+        ))}
+      {/* 结果阶段：正文一旦到达即渲染 Markdown，推理过程让位、自动隐藏 */}
+      {text && (
         <div
           className="md-body"
           style={{
@@ -561,13 +625,10 @@ function AiAnalysisView({
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
           {loading && <span style={{ color: "var(--accent)" }}>█</span>}
         </div>
-      ) : loading ? (
-        <p className="tip">正在处理…</p>
-      ) : !error ? (
-        <p className="tip"></p>
-      ) : null}
-      {reasoning && (
-        <div style={{ marginTop: 12,display:'none' }}>
+      )}
+      {/* 出结果后保留一个默认收起的入口，可回看完整思考过程 */}
+      {text && reasoning && (
+        <div style={{ marginTop: 12 }}>
           <button
             type="button"
             onClick={() => setShowReasoning((v) => !v)}
