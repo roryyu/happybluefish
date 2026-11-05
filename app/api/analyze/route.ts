@@ -106,12 +106,19 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("task");
   const job = id ? jobs.get(id) : undefined;
+  // 快照是秒级变化的实时状态，任何一层（网关/CDN/浏览器）缓存都会让轮询永远拿到
+  // 旧快照（表现为任务永远 running、无内容无报错）。显式 no-store 并带Pragma 兜底老代理。
+  const noStore = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    Pragma: "no-cache",
+    Expires: "0",
+  };
   if (!job) {
-    return Response.json({ error: "task not found" }, { status: 404 });
+    return Response.json({ error: "task not found" }, { status: 404, headers: noStore });
   }
   // 不回传内部 cancelled 标记，其余字段作为快照供前端渐进渲染
   const { cancelled, ...snapshot } = job;
-  return Response.json(snapshot);
+  return Response.json(snapshot, { headers: noStore });
 }
 
 export async function DELETE(req: NextRequest) {

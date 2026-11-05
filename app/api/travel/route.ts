@@ -117,17 +117,26 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  // 快照/探针都是实时结果，禁止任何中间层缓存（否则轮询永远拿到旧快照）
+  const noStore = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    Pragma: "no-cache",
+    Expires: "0",
+  };
   // 自检探针：?probe=llm | bing | all，从服务器实测出网连通性（部署平台出站被拦时一步定位）
   const probe = req.nextUrl.searchParams.get("probe");
-  if (probe) return probeNetwork(probe);
+  if (probe) {
+    const out = await probeNetwork(probe);
+    return Response.json(await out.json(), { status: out.status, headers: noStore });
+  }
 
   const id = req.nextUrl.searchParams.get("task");
   const job = id ? jobs.get(id) : undefined;
   if (!job) {
-    return Response.json({ error: "task not found" }, { status: 404 });
+    return Response.json({ error: "task not found" }, { status: 404, headers: noStore });
   }
   const { cancelled, ...snapshot } = job;
-  return Response.json(snapshot);
+  return Response.json(snapshot, { headers: noStore });
 }
 
 /** 出网连通性探针：短超时实测，绝不长挂。 */

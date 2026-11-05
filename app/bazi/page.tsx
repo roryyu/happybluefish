@@ -488,8 +488,11 @@ function AiAnalysisView({
         if (ctrl.signal.aborted) break;
         let snapRes: Response;
         try {
-          snapRes = await fetch(`/api/analyze?task=${encodeURIComponent(taskId)}`, {
+          // no-store + 时间戳参数双保险：网关/CDN 若按 URL 缓存 GET，
+          // 轮询会永远拿到首帧旧快照（任务看似永远 running）
+          snapRes = await fetch(`/api/analyze?task=${encodeURIComponent(taskId)}&_t=${Date.now()}`, {
             signal: ctrl.signal,
+            cache: "no-store",
           });
         } catch (e) {
           if ((e as Error).name === "AbortError") break;

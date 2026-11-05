@@ -117,7 +117,7 @@ export default function TravelPage() {
       while (!stopRef.current) {
         await new Promise((r) => setTimeout(r, 1500));
         if (stopRef.current) break;
-        const r = await fetch(`/api/travel?task=${taskId}`);
+        const r = await fetch(`/api/travel?task=${taskId}&_t=${Date.now()}`, { cache: "no-store" });
         if (!r.ok) {
           throw new Error(r.status === 404 ? "任务不存在（服务可能已重启），请重新生成" : `HTTP ${r.status}`);
         }
