@@ -125,9 +125,28 @@ export async function DELETE(req: NextRequest) {
 
 async function runAnalyzeJob(job: Job, promptText: string) {
   const { apiKey, baseURL, model, enableThinking } = resolveModelConfig();
-  // 收紧单次调用超时与重试：SDK 默认 10 分钟超时 × 2 次重试，出网被拦时会永远卡在 running。
-  // 命理分析较长，给 5 分钟上限；后台执行不受网关长连接限制。
+  // SDK 的 timeout 只覆盖「连接 → 响应头」阶段：openai 4.x 在 fetch 拿到响应头后就
+  // clearTimeout（core.js fetchWithTimeout），之后流体挂起不再有任何超时保护。
+  // 因此流式阶段必须自带看门狗：首分片迟迟不到 / 分片间长时间断流都主动 abort，
+  // 把「永远 running、无报错」的静默挂起转成可见错误。
   const openai = new OpenAI({ apiKey, baseURL, timeout: 300_000, maxRetries: 1 });
+
+  const controller = new AbortController();
+  const FIRST_CHUNK_MS = 120_000; // 首分片上限（含模型排队/长思考的首包延迟）
+  const IDLE_MS = 90_000; // 相邻分片间最大静默
+  let watchdogReason = "";
+  let firstTimer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+    watchdogReason = `端点已接受请求，但 ${FIRST_CHUNK_MS / 1000}s 内未返回任何流式数据（首分片超时）`;
+    controller.abort();
+  }, FIRST_CHUNK_MS);
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  const armIdle = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      watchdogReason = `流式输出中途断流超过 ${IDLE_MS / 1000}s（已收到部分数据后挂起）`;
+      controller.abort();
+    }, IDLE_MS);
+  };
 
   const finish = (status: JobStatus, error: string | null = null) => {
     job.status = status;
@@ -147,14 +166,20 @@ async function runAnalyzeJob(job: Job, promptText: string) {
       ...(enableThinking
         ? { thinking: { type: "enabled" }, reasoning_effort: "high" }
         : {}),
-    } as Parameters<typeof openai.chat.completions.create>[0])) as unknown as AsyncIterable<{
+    } as Parameters<typeof openai.chat.completions.create>[0], { signal: controller.signal })) as unknown as AsyncIterable<{
       choices: { delta: { content?: string; reasoning_content?: string } }[];
     }>;
 
+    // 走到这里说明响应头已到（SDK timeout 已失效），首分片计时继续兜底
     for await (const part of completion) {
       if (job.cancelled) return finish("cancelled");
       const delta = part.choices?.[0]?.delta;
       if (!delta) continue;
+      if (delta.reasoning_content || delta.content) {
+        clearTimeout(firstTimer);
+        firstTimer = undefined;
+        armIdle(); // 每收到一个有效分片就重置断流计时
+      }
       if (delta.reasoning_content) job.reasoning += delta.reasoning_content;
       if (delta.content) job.content += delta.content;
     }
@@ -162,11 +187,17 @@ async function runAnalyzeJob(job: Job, promptText: string) {
     if (job.cancelled) return finish("cancelled");
     finish("done");
   } catch (e) {
+    if (watchdogReason) {
+      return finish("error", `${watchdogReason}。模型端点 ${baseURL}，模型 ${model} —— 短 prompt 测试可通而长请求挂起时，多为端点对该请求排队/限流或中间链路黑洞，可换模型或稍后重试。`);
+    }
     if (job.cancelled) return finish("cancelled");
     const msg = (e as Error).message || "stream error";
     finish(
       "error",
       `调用大模型失败：${msg}。模型端点 ${baseURL} —— 若为超时/连接错误，说明服务器出网被拦或模型不可用。`,
     );
+  } finally {
+    clearTimeout(firstTimer);
+    clearTimeout(idleTimer);
   }
 }
